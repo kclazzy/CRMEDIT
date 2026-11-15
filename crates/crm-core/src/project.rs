@@ -1,5 +1,5 @@
-use crate::Definition;
 use crate::store::{StoreError, write_new};
+use crate::{Definition, Ident};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io;
@@ -73,7 +73,7 @@ impl Project {
     ///
     /// Вычисляется из первого снимка, а он неизменяем, — поэтому идентификатор
     /// не хранится отдельно и не может разойтись с проектом.
-    pub fn app_id(&self) -> Result<String, StoreError> {
+    pub fn app_id(&self) -> Result<Ident, StoreError> {
         let file = self.file(1);
         let bytes = fs::read(&file).map_err(StoreError::io(&file))?;
         // FNV-1a; переводы строк Windows пропускаются, чтобы копия проекта осталась тем же проектом.
@@ -83,7 +83,8 @@ impl Project {
             .fold(0xcbf2_9ce4_8422_2325_u64, |hash, byte| {
                 (hash ^ u64::from(*byte)).wrapping_mul(0x0000_0100_0000_01b3)
             });
-        Ok(format!("crm_{:012x}", hash & 0xffff_ffff_ffff))
+        let id = format!("crm_{:012x}", hash & 0xffff_ffff_ffff);
+        Ok(Ident::parse(&id).expect("«crm_» и шестнадцатеричные цифры — корректный идентификатор"))
     }
 
     /// Текущая версия.

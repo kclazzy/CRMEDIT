@@ -9,9 +9,14 @@ repository.workspace = true
 [dependencies]
 crm-core = { path = "../crm-core" }
 clap.workspace = true
+crm-runtime = { path = "../crm-runtime" }
+eframe.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+egui_kittest.workspace = true
 
 [lints]
 workspace = true

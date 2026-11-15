@@ -348,5 +348,5 @@ fn different_projects_get_different_app_ids() {
         "{ids:?}"
     );
     // Значение закреплено: изменится — установленные CRM потеряют связь со своими данными.
-    assert_eq!(ids[0], "crm_cc21afbc060a");
+    assert_eq!(ids[0].as_str(), "crm_cc21afbc060a");
 }

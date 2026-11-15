@@ -1,7 +1,9 @@
 //! Редактор CRMEDIT. На этапе 1 — командная строка поверх `crm-core`.
 
 mod args;
+pub mod bundle;
 mod render;
+pub mod setup;
 
 use args::{Cli, Command, EntityAction, FieldAction, ProjectCommand, TemplateArg};
 use clap::Parser;
