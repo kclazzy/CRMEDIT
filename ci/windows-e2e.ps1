@@ -13,7 +13,7 @@ function Check($condition, $what) {
     Write-Host "ok: $what"
 }
 
-function Cli {
+function Invoke-Editor {
     & "$bin\crmedit-cli.exe" @args
     if ($LASTEXITCODE -ne 0) { throw "crmedit-cli $args -> код $LASTEXITCODE" }
 }
@@ -42,8 +42,8 @@ function Start-Crm($exe) {
 }
 
 # --- Сборка установочника версии 1 -----------------------------------------
-Cli new "$work\shop" --name $name
-Cli build "$work\setup-v1.exe"
+Invoke-Editor new "$work\shop" --name $name
+Invoke-Editor build "$work\setup-v1.exe"
 Check (Test-Path "$work\setup-v1.exe") 'установочник версии 1 собран'
 
 # --- Установка --------------------------------------------------------------
@@ -74,8 +74,8 @@ Check (Test-Path $db) 'база создана в папке данных, от�
 Check (-not (Get-ChildItem $data -Filter '*backup*')) 'у новой базы резервной копии нет'
 
 # --- Обновление: новая версия описания поверх установленной -----------------
-Cli field add client city 'Город' text
-Cli build "$work\setup-v2.exe"
+Invoke-Editor field add client city 'Город' text
+Invoke-Editor build "$work\setup-v2.exe"
 Run "$work\setup-v2.exe" '--install --silent'
 Check ((Get-ItemProperty $key).DisplayVersion -eq '2') 'после обновления версия в записи — 2'
 Check (Test-Path $db) 'обновление не тронуло базу'
