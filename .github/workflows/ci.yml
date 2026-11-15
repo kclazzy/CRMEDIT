@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
 
 permissions:
@@ -25,16 +26,37 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
 
-  windows-build:
-    needs: check
+  windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo build --release --locked -p crmedit
+      - name: Install, run, upgrade and uninstall a built CRM on real Windows
+        shell: pwsh
+        run: ./ci/windows-e2e.ps1
       - uses: actions/upload-artifact@v4
         with:
           name: crmedit-windows-x64
-          path: target/release/crmedit.exe
+          path: |
+            target/release/crmedit.exe
+            target/release/crmedit-cli.exe
+            target/release/Demo-setup.exe
           if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [check, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: crmedit-windows-x64
+          path: crmedit
+      - run: zip -r "crmedit-${GITHUB_REF_NAME}-windows-x64.zip" crmedit
+      - run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "CRMEDIT $GITHUB_REF_NAME" --notes "Редактор CRM для Windows 10/11 x64. Распакуйте архив и запустите crmedit.exe." crmedit-*.zip
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -669,9 +669,9 @@ fn draw_bar(ui: &mut Ui, open: &Open, known: &[(PathBuf, Option<String>)], actio
 
 /// Поле ввода названия: правка уходит в проект, когда пользователь покидает поле.
 fn title_input(ui: &mut Ui, text: &mut String, saved: &str, label: egui::Id, width: f32) -> bool {
-    let input = ui
-        .add(TextEdit::singleline(text).desired_width(width))
-        .labelled_by(label);
+    // Явный размер: в таблице полей поле ввода иначе сжимается до пары букв.
+    let size = egui::vec2(width, ui.spacing().interact_size.y);
+    let input = ui.add_sized(size, TextEdit::singleline(text)).labelled_by(label);
     input.lost_focus() && text.trim() != saved
 }
 

@@ -20,3 +20,9 @@ clap = { version = "4", features = ["derive"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
+
+[profile.release]
+# Программа ставится на чужие компьютеры и целиком входит в каждый установочник.
+strip = true
+lto = "thin"
+codegen-units = 4
