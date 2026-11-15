@@ -2,12 +2,13 @@
 
 mod args;
 pub mod bundle;
+pub mod editor;
 mod render;
 pub mod setup;
 
 use args::{Cli, Command, EntityAction, FieldAction, ProjectCommand, TemplateArg};
 use clap::Parser;
-use crm_core::{Definition, DefinitionError, Field, Project, Registry, Saved};
+use crm_core::{Definition, DefinitionError, Field, Project, Registry, Saved, Snapshot};
 use std::error::Error;
 use std::path::{Component, Path, PathBuf};
 
@@ -186,15 +187,24 @@ fn field_edit(action: FieldAction) -> Edit {
 /// Читает текущую версию, применяет правку и сохраняет результат новой версией.
 fn edit(project: &Project, env: &Env, (note, change): Edit) -> Result<String, Failure> {
     let head = project.head()?;
-    let mut definition = head.definition;
-    change(&mut definition)?;
-    Ok(report(
-        &note,
-        project.save(head.seq, &definition, &note, env.now)?,
-    ))
+    Ok(report(&note, save_edit(project, &head, &note, change, env.now)?))
 }
 
-fn report(what: &str, saved: Saved) -> String {
+/// Применяет правку к версии `head` и сохраняет результат следующей версией.
+/// Общий путь для командной строки и окна редактора.
+pub(crate) fn save_edit(
+    project: &Project,
+    head: &Snapshot,
+    note: &str,
+    change: impl FnOnce(&mut Definition) -> Result<(), DefinitionError>,
+    now: u64,
+) -> Result<Saved, Failure> {
+    let mut definition = head.definition.clone();
+    change(&mut definition)?;
+    Ok(project.save(head.seq, &definition, note, now)?)
+}
+
+pub(crate) fn report(what: &str, saved: Saved) -> String {
     match saved {
         Saved::New(seq) => format!("{what}. Версия {seq}."),
         Saved::Unchanged => "Изменений нет: описание уже такое.".to_owned(),

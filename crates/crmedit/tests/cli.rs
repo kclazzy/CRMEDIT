@@ -363,7 +363,7 @@ fn registry_lives_in_the_user_profile_unless_overridden() {
 fn the_program_itself_prints_results_and_signals_failure_by_exit_code() {
     let desk = Desk::new();
     let program = |line: &[&str]| {
-        std::process::Command::new(env!("CARGO_BIN_EXE_crmedit"))
+        std::process::Command::new(env!("CARGO_BIN_EXE_crmedit-cli"))
             .args(line)
             .current_dir(desk.dir())
             .env("CRMEDIT_HOME", desk.dir().join("home"))

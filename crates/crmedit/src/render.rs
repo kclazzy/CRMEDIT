@@ -59,7 +59,7 @@ pub fn history(snapshots: &[Snapshot]) -> String {
 }
 
 /// Секунды эпохи Unix → «ГГГГ-ММ-ДД ЧЧ:ММ UTC».
-fn utc(seconds: u64) -> String {
+pub(crate) fn utc(seconds: u64) -> String {
     let (days, rest) = (seconds / 86_400, seconds % 86_400);
     // Перевод числа дней в дату григорианского календаря (алгоритм Х. Хиннанта).
     let shifted = days + 719_468;
