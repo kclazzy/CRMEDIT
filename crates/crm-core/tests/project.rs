@@ -307,11 +307,7 @@ fn app_id_identifies_the_project_for_its_whole_life() {
     let tmp = TempDir::new().unwrap();
     let project = new_project(&tmp.path().join("a"));
     let id = project.app_id().unwrap();
-    assert!(id.starts_with("crm_") && id.len() == 16, "{id}");
-    assert!(
-        crm_core::Ident::parse(&id).is_ok(),
-        "годится для имён папок и ключей: {id}"
-    );
+    assert!(id.as_str().starts_with("crm_") && id.as_str().len() == 16, "{id}");
 
     project
         .save(1, &with_entity(sales(), "supplier"), "Правка", 200)

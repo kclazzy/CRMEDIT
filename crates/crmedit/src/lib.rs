@@ -3,8 +3,10 @@
 mod args;
 pub mod bundle;
 pub mod editor;
+pub mod launch;
 mod render;
 pub mod setup;
+pub mod setup_ui;
 
 use args::{Cli, Command, EntityAction, FieldAction, ProjectCommand, TemplateArg};
 use clap::Parser;
@@ -21,6 +23,8 @@ pub struct Env {
     pub cwd: PathBuf,
     /// Текущее время, секунды эпохи Unix.
     pub now: u64,
+    /// Программа с окном (`crmedit`), из которой собирается установочник.
+    pub program: PathBuf,
 }
 
 type Failure = Box<dyn Error>;
@@ -129,6 +133,11 @@ fn in_project(project: &Project, command: ProjectCommand, env: &Env) -> Result<S
             &format!("Возврат к версии {seq}"),
             project.restore(seq, env.now)?,
         )),
+        ProjectCommand::Build { out } => {
+            let out = resolve(&env.cwd, &out);
+            bundle::build(&env.program, project, &out)?;
+            Ok(format!("Установочник готов: {}", out.display()))
+        }
         ProjectCommand::Entity { action } => edit(project, env, entity_edit(action)),
         ProjectCommand::Field { action } => edit(project, env, field_edit(action)),
     }

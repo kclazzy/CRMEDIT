@@ -27,6 +27,7 @@ impl Desk {
             registry_file: self.dir().join("settings/projects.json"),
             cwd: self.dir().to_owned(),
             now: self.now,
+            program: self.dir().join("crmedit.exe"),
         };
         run(
             std::iter::once("crmedit")
@@ -385,4 +386,29 @@ fn the_program_itself_prints_results_and_signals_failure_by_exit_code() {
     assert_eq!(failed.status.code(), Some(1));
     assert!(failed.stdout.is_empty());
     assert!(String::from_utf8(failed.stderr).unwrap().contains("версии 9 нет"));
+}
+
+#[test]
+fn build_packs_the_window_program_with_the_current_version() {
+    let desk = Desk::new();
+    desk.run(&["new", "shop", "--name", "Магазин"]);
+    desk.run(&["entity", "add", "supplier", "Поставщики"]);
+    assert!(
+        desk.fail(&["build", "out/setup.exe"]).contains("crmedit.exe"),
+        "без программы с окном собрать нельзя"
+    );
+
+    std::fs::write(desk.dir().join("crmedit.exe"), b"window program").unwrap();
+    let out = desk.run(&["build", "out/setup.exe"]);
+    assert!(
+        out.contains("Установочник готов") && out.contains("setup.exe"),
+        "{out}"
+    );
+
+    let built = std::fs::read(desk.dir().join("out/setup.exe")).unwrap();
+    let (program, bundle) = crmedit::bundle::detach(&built).unwrap();
+    let bundle = bundle.unwrap();
+    assert_eq!(program, b"window program");
+    assert_eq!((bundle.version, bundle.definition.name()), (2, "Магазин"));
+    assert_eq!(bundle.definition.entities().len(), 4);
 }
