@@ -142,13 +142,7 @@ impl Project {
     /// Номера снимков в папке истории; посторонние файлы пропускаются.
     fn seqs(&self) -> Result<Vec<u32>, StoreError> {
         let dir = self.dir.join(HISTORY_DIR);
-        let entries = match fs::read_dir(&dir) {
-            Ok(entries) => entries,
-            Err(e) if e.kind() == io::ErrorKind::NotFound => {
-                return Err(StoreError::NotAProject(self.dir.clone()));
-            }
-            Err(e) => return Err(StoreError::io(&dir)(e)),
-        };
+        let entries = fs::read_dir(&dir).map_err(StoreError::io(&dir))?;
         let mut seqs = Vec::new();
         for entry in entries {
             let name = entry.map_err(StoreError::io(&dir))?.file_name();

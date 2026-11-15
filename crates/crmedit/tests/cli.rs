@@ -187,6 +187,18 @@ fn history_shows_when_each_version_was_saved() {
     );
     assert!(lines[1].contains("2  2000-02-29 23:59 UTC"), "{history}");
     assert!(lines[2].contains("3  2025-01-01 00:00 UTC"), "{history}");
+
+    // Границы столетий и 400-летнего цикла календаря.
+    for (seconds, expected) in [
+        (4_107_542_400, "2100-03-01 00:00 UTC"),
+        (13_569_465_540, "2399-12-31 23:59 UTC"),
+        (13_574_606_400, "2400-02-29 12:00 UTC"),
+    ] {
+        desk.now = seconds;
+        desk.run(&["entity", "add", &format!("e{seconds}"), "Е"]);
+        let history = desk.run(&["history"]);
+        assert!(history.lines().last().unwrap().contains(expected), "{history}");
+    }
 }
 
 #[test]
@@ -345,4 +357,32 @@ fn registry_lives_in_the_user_profile_unless_overridden() {
         path(&["h", ".config", "crmedit", "projects.json"])
     );
     assert_eq!(registry_file(vars(&[])), path(&[".crmedit", "projects.json"]));
+}
+
+#[test]
+fn the_program_itself_prints_results_and_signals_failure_by_exit_code() {
+    let desk = Desk::new();
+    let program = |line: &[&str]| {
+        std::process::Command::new(env!("CARGO_BIN_EXE_crmedit"))
+            .args(line)
+            .current_dir(desk.dir())
+            .env("CRMEDIT_HOME", desk.dir().join("home"))
+            .output()
+            .unwrap()
+    };
+
+    let created = program(&["new", "crm"]);
+    assert!(created.status.success());
+    assert!(
+        String::from_utf8(created.stdout)
+            .unwrap()
+            .contains("Создан проект «crm»")
+    );
+    assert!(desk.dir().join("home/projects.json").is_file());
+    assert!(desk.dir().join("crm/history/000001.json").is_file());
+
+    let failed = program(&["restore", "9"]);
+    assert_eq!(failed.status.code(), Some(1));
+    assert!(failed.stdout.is_empty());
+    assert!(String::from_utf8(failed.stderr).unwrap().contains("версии 9 нет"));
 }

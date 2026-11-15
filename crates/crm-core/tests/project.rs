@@ -284,3 +284,20 @@ fn snapshot_file_is_readable_json_with_the_definition_inside() {
         "файл отформатирован для чтения человеком"
     );
 }
+
+#[test]
+fn project_deleted_while_open_reports_an_error() {
+    let tmp = TempDir::new().unwrap();
+    let project = new_project(&tmp.path().join("crm"));
+    fs::remove_dir_all(tmp.path().join("crm")).unwrap();
+    assert!(matches!(project.head().unwrap_err(), StoreError::Io { .. }));
+    assert!(matches!(project.history().unwrap_err(), StoreError::Io { .. }));
+}
+
+#[test]
+fn emptied_history_folder_is_no_longer_a_project() {
+    let tmp = TempDir::new().unwrap();
+    let project = new_project(tmp.path());
+    fs::remove_file(tmp.path().join("history/000001.json")).unwrap();
+    assert!(matches!(project.head().unwrap_err(), StoreError::NotAProject(_)));
+}

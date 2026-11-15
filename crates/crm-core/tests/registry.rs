@@ -63,3 +63,11 @@ fn damaged_registry_is_reported_not_silently_emptied() {
     let err = Registry::load(&file).unwrap_err();
     assert!(matches!(err, StoreError::Damaged { .. }), "{err}");
 }
+
+#[test]
+fn unreadable_registry_is_an_error_not_an_empty_list() {
+    let tmp = TempDir::new().unwrap();
+    // На месте файла реестра — папка: прочитать её как файл нельзя.
+    let err = Registry::load(tmp.path()).unwrap_err();
+    assert!(matches!(err, StoreError::Io { .. }), "{err}");
+}

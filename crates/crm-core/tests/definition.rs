@@ -33,6 +33,12 @@ fn ident_accepts_technical_names_only() {
         assert!(Ident::parse(bad).is_err(), "{bad:?} должен быть отвергнут");
     }
     assert!(Ident::parse(&"a".repeat(48)).is_ok());
+    assert!(
+        Ident::parse("Мой id")
+            .unwrap_err()
+            .to_string()
+            .contains("«Мой id»")
+    );
 }
 
 #[test]
@@ -207,6 +213,12 @@ fn json_round_trip_preserves_the_definition() {
     let mut def = Template::Sales.build("Продажи").unwrap();
     def.set_field_hidden(&id("task"), &id("done"), true).unwrap();
     let json = serde_json::to_string_pretty(&def).unwrap();
+    assert_eq!(
+        json.matches("\"hidden\": true").count(),
+        1,
+        "записан только установленный флажок"
+    );
+    assert!(!json.contains("false"), "снятые флажки в файл не пишутся");
     let back: Definition = serde_json::from_str(&json).unwrap();
     assert_eq!(back, def);
 }
