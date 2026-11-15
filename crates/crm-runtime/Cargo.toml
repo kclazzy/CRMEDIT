@@ -1,0 +1,17 @@
+[package]
+name = "crm-runtime"
+description = "Рабочая CRM: база данных и окно, построенные по описанию"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+crm-core = { path = "../crm-core" }
+rusqlite.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true
