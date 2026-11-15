@@ -140,14 +140,66 @@ impl Definition {
         hidden: bool,
     ) -> Result<(), DefinitionError> {
         self.change(|draft| {
-            let found = draft
-                .entity_mut(entity)?
-                .fields
-                .iter_mut()
-                .find(|f| f.id == *field);
-            found
-                .ok_or_else(|| DefinitionError::UnknownField(entity.clone(), field.clone()))?
-                .hidden = hidden;
+            draft.field_mut(entity, field)?.hidden = hidden;
+            Ok(())
+        })
+    }
+
+    pub fn set_name(&mut self, name: &str) -> Result<(), DefinitionError> {
+        self.change(|draft| {
+            draft.name = name.to_owned();
+            Ok(())
+        })
+    }
+
+    pub fn set_entity_title(&mut self, entity: &Ident, title: &str) -> Result<(), DefinitionError> {
+        self.change(|draft| {
+            draft.entity_mut(entity)?.title = title.to_owned();
+            Ok(())
+        })
+    }
+
+    pub fn set_field_title(
+        &mut self,
+        entity: &Ident,
+        field: &Ident,
+        title: &str,
+    ) -> Result<(), DefinitionError> {
+        self.change(|draft| {
+            draft.field_mut(entity, field)?.title = title.to_owned();
+            Ok(())
+        })
+    }
+
+    pub fn set_field_required(
+        &mut self,
+        entity: &Ident,
+        field: &Ident,
+        required: bool,
+    ) -> Result<(), DefinitionError> {
+        self.change(|draft| {
+            draft.field_mut(entity, field)?.required = required;
+            Ok(())
+        })
+    }
+
+    /// Сдвигает сущность на `step` мест (−1 — выше, +1 — ниже); у края остаётся на месте.
+    pub fn move_entity(&mut self, entity: &Ident, step: isize) -> Result<(), DefinitionError> {
+        self.change(|draft| {
+            let found = draft.entities.iter().position(|e| e.id == *entity);
+            let from = found.ok_or_else(|| DefinitionError::UnknownEntity(entity.clone()))?;
+            shift(&mut draft.entities, from, step);
+            Ok(())
+        })
+    }
+
+    /// Сдвигает поле внутри сущности так же, как [`Self::move_entity`].
+    pub fn move_field(&mut self, entity: &Ident, field: &Ident, step: isize) -> Result<(), DefinitionError> {
+        self.change(|draft| {
+            let fields = &mut draft.entity_mut(entity)?.fields;
+            let found = fields.iter().position(|f| f.id == *field);
+            let from = found.ok_or_else(|| DefinitionError::UnknownField(entity.clone(), field.clone()))?;
+            shift(fields, from, step);
             Ok(())
         })
     }
@@ -171,6 +223,23 @@ impl Draft {
             .iter_mut()
             .find(|e| e.id == *id)
             .ok_or_else(|| DefinitionError::UnknownEntity(id.clone()))
+    }
+}
+
+impl Draft {
+    fn field_mut(&mut self, entity: &Ident, field: &Ident) -> Result<&mut Field, DefinitionError> {
+        let found = self
+            .entity_mut(entity)?
+            .fields
+            .iter_mut()
+            .find(|f| f.id == *field);
+        found.ok_or_else(|| DefinitionError::UnknownField(entity.clone(), field.clone()))
+    }
+}
+
+fn shift<T>(items: &mut [T], from: usize, step: isize) {
+    if let Some(to) = from.checked_add_signed(step).filter(|to| *to < items.len()) {
+        items.swap(from, to);
     }
 }
 

@@ -301,3 +301,52 @@ fn emptied_history_folder_is_no_longer_a_project() {
     fs::remove_file(tmp.path().join("history/000001.json")).unwrap();
     assert!(matches!(project.head().unwrap_err(), StoreError::NotAProject(_)));
 }
+
+#[test]
+fn app_id_identifies_the_project_for_its_whole_life() {
+    let tmp = TempDir::new().unwrap();
+    let project = new_project(&tmp.path().join("a"));
+    let id = project.app_id().unwrap();
+    assert!(id.starts_with("crm_") && id.len() == 16, "{id}");
+    assert!(
+        crm_core::Ident::parse(&id).is_ok(),
+        "годится для имён папок и ключей: {id}"
+    );
+
+    project
+        .save(1, &with_entity(sales(), "supplier"), "Правка", 200)
+        .unwrap();
+    project.restore(1, 300).unwrap();
+    assert_eq!(project.app_id().unwrap(), id, "правки и возвраты его не меняют");
+    assert_eq!(
+        Project::open(&tmp.path().join("a")).unwrap().app_id().unwrap(),
+        id
+    );
+
+    // Тот же файл с переводами строк Windows — тот же проект.
+    let file = tmp.path().join("a/history/000001.json");
+    let crlf = fs::read_to_string(&file).unwrap().replace('\n', "\r\n");
+    fs::write(&file, crlf).unwrap();
+    assert_eq!(project.app_id().unwrap(), id);
+}
+
+#[test]
+fn different_projects_get_different_app_ids() {
+    let tmp = TempDir::new().unwrap();
+    let a = Project::create(&tmp.path().join("a"), &sales(), "Создан", 100).unwrap();
+    let b = Project::create(&tmp.path().join("b"), &sales(), "Создан", 101).unwrap();
+    let c = Project::create(
+        &tmp.path().join("c"),
+        &Template::Empty.build("Продажи").unwrap(),
+        "Создан",
+        100,
+    )
+    .unwrap();
+    let ids = [a.app_id().unwrap(), b.app_id().unwrap(), c.app_id().unwrap()];
+    assert!(
+        ids[0] != ids[1] && ids[0] != ids[2] && ids[1] != ids[2],
+        "{ids:?}"
+    );
+    // Значение закреплено: изменится — установленные CRM потеряют связь со своими данными.
+    assert_eq!(ids[0], "crm_cc21afbc060a");
+}

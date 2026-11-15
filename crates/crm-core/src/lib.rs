@@ -8,7 +8,7 @@ mod store;
 mod template;
 
 pub use definition::{Definition, DefinitionError, Entity, Field, FieldKind};
-pub use ident::{Ident, IdentError};
+pub use ident::{Ident, IdentError, suggest_ident};
 pub use project::{Project, Saved, Snapshot};
 pub use registry::Registry;
 pub use store::StoreError;

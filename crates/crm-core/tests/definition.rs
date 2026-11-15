@@ -284,3 +284,132 @@ fn errors_are_explained_in_russian_with_the_place() {
     assert!(msg.contains("client") && msg.contains("name"), "{msg}");
     assert!(msg.chars().any(|c| ('а'..='я').contains(&c)), "{msg}");
 }
+
+#[test]
+fn titles_name_and_required_can_be_changed_but_not_blanked() {
+    let mut def = linked();
+    def.set_name("Новое имя").unwrap();
+    def.set_entity_title(&id("client"), "Заказчики").unwrap();
+    def.set_field_title(&id("deal"), &id("client"), "Заказчик")
+        .unwrap();
+    def.set_field_required(&id("deal"), &id("client"), true).unwrap();
+
+    assert_eq!(def.name(), "Новое имя");
+    assert_eq!(def.entities()[0].title, "Заказчики");
+    let field = &def.entities()[1].fields[0];
+    assert_eq!(
+        (field.title.as_str(), field.required, field.id.as_str()),
+        ("Заказчик", true, "client")
+    );
+    def.set_field_required(&id("deal"), &id("client"), false).unwrap();
+    assert!(!def.entities()[1].fields[0].required);
+
+    let before = def.clone();
+    assert_eq!(def.set_name(" "), Err(DefinitionError::BlankName));
+    assert_eq!(
+        def.set_entity_title(&id("client"), ""),
+        Err(DefinitionError::BlankEntityTitle(id("client")))
+    );
+    assert_eq!(
+        def.set_entity_title(&id("ghost"), "Х"),
+        Err(DefinitionError::UnknownEntity(id("ghost")))
+    );
+    assert_eq!(
+        def.set_field_title(&id("deal"), &id("client"), " "),
+        Err(DefinitionError::BlankFieldTitle(id("deal"), id("client")))
+    );
+    assert_eq!(
+        def.set_field_title(&id("deal"), &id("ghost"), "Х"),
+        Err(DefinitionError::UnknownField(id("deal"), id("ghost")))
+    );
+    assert_eq!(
+        def.set_field_required(&id("deal"), &id("ghost"), true),
+        Err(DefinitionError::UnknownField(id("deal"), id("ghost")))
+    );
+    assert_eq!(def, before);
+}
+
+#[test]
+fn entities_and_fields_can_be_reordered_within_bounds() {
+    let mut def = Template::Sales.build("П").unwrap();
+    let order = |def: &Definition| {
+        def.entities()
+            .iter()
+            .map(|e| e.id.to_string())
+            .collect::<Vec<_>>()
+    };
+    let fields = |def: &Definition| {
+        def.entities()[0]
+            .fields
+            .iter()
+            .map(|f| f.id.to_string())
+            .collect::<Vec<_>>()
+    };
+
+    def.move_entity(&id("task"), -1).unwrap();
+    assert_eq!(order(&def), ["client", "task", "deal"]);
+    def.move_entity(&id("client"), 1).unwrap();
+    assert_eq!(order(&def), ["task", "client", "deal"]);
+    // За край список не выходит: крайний элемент остаётся на месте.
+    def.move_entity(&id("task"), -1).unwrap();
+    def.move_entity(&id("deal"), 1).unwrap();
+    assert_eq!(order(&def), ["task", "client", "deal"]);
+    assert_eq!(
+        def.move_entity(&id("ghost"), 1),
+        Err(DefinitionError::UnknownEntity(id("ghost")))
+    );
+
+    let mut def = Template::Sales.build("П").unwrap();
+    def.move_field(&id("client"), &id("note"), -1).unwrap();
+    assert_eq!(fields(&def), ["name", "phone", "note", "email"]);
+    def.move_field(&id("client"), &id("name"), 1).unwrap();
+    assert_eq!(fields(&def), ["phone", "name", "note", "email"]);
+    def.move_field(&id("client"), &id("email"), 1).unwrap();
+    def.move_field(&id("client"), &id("phone"), -1).unwrap();
+    assert_eq!(fields(&def), ["phone", "name", "note", "email"]);
+    assert_eq!(
+        def.move_field(&id("client"), &id("ghost"), 1),
+        Err(DefinitionError::UnknownField(id("client"), id("ghost")))
+    );
+    assert_eq!(
+        def.move_field(&id("ghost"), &id("x"), 1),
+        Err(DefinitionError::UnknownEntity(id("ghost")))
+    );
+}
+
+#[test]
+fn technical_name_is_suggested_from_the_russian_title() {
+    use crm_core::suggest_ident;
+    let none: [Ident; 0] = [];
+    let cases = [
+        ("Клиенты", "klienty"),
+        ("Дата закрытия", "data_zakrytiya"),
+        ("Эл. почта", "el_pochta"),
+        ("Счёт №2 (новый)", "schyot_2_novyy"),
+        ("Щука и ёж", "schuka_i_yozh"),
+        ("Phone Number", "phone_number"),
+        ("2-й телефон", "x_2_y_telefon"),
+        ("  ", "item"),
+        ("!!!", "item"),
+        ("Цех, объём, жюри", "tseh_obyom_zhyuri"),
+    ];
+    for (title, expected) in cases {
+        assert_eq!(suggest_ident(title, &none).as_str(), expected, "{title}");
+    }
+}
+
+#[test]
+fn suggested_name_avoids_taken_ones_and_fits_the_limit() {
+    use crm_core::suggest_ident;
+    let taken = [id("klienty"), id("klienty_2")];
+    assert_eq!(suggest_ident("Клиенты", &taken).as_str(), "klienty_3");
+    assert_eq!(suggest_ident("Сделки", &taken).as_str(), "sdelki");
+
+    let long = suggest_ident(&"Щ".repeat(60), &[]);
+    assert!(
+        long.as_str().len() <= Ident::MAX_LEN - 8,
+        "остаётся место для номера: {long}"
+    );
+    let again = suggest_ident(&"Щ".repeat(60), std::slice::from_ref(&long));
+    assert!(again.as_str().ends_with("_2") && again.as_str().len() <= Ident::MAX_LEN);
+}
