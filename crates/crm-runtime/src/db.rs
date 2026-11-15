@@ -105,6 +105,15 @@ impl Db {
         Ok(self.conn.last_insert_rowid())
     }
 
+    /// Добавляет несколько записей: либо все, либо ни одной.
+    pub fn insert_all(&self, entity: &Entity, records: &[Vec<Value>]) -> Result<(), DbError> {
+        let all = self.conn.unchecked_transaction()?;
+        for values in records {
+            self.insert(entity, values)?;
+        }
+        Ok(all.commit()?)
+    }
+
     /// Заменяет видимые поля записи; скрытые остаются как были.
     pub fn update(&self, entity: &Entity, id: i64, values: &[Value]) -> Result<(), DbError> {
         let sets: Vec<String> = shown(entity)

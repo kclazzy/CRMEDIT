@@ -9,9 +9,11 @@ repository.workspace = true
 [dependencies]
 crm-core = { path = "../crm-core" }
 rusqlite.workspace = true
+eframe.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+egui_kittest.workspace = true
 
 [lints]
 workspace = true

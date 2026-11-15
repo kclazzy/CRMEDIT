@@ -403,3 +403,26 @@ fn database_folder_is_created_when_missing() {
     drop(Db::open(&file, &sales(), 100).unwrap());
     assert!(file.is_file());
 }
+
+#[test]
+fn batch_insert_is_all_or_nothing() {
+    let tmp = TempDir::new().unwrap();
+    let def = sales();
+    let db = seeded(&tmp.path().join("crm.db"));
+    let deal = entity(&def, "deal");
+    let good = form(deal, &["А", "1", "", "Новая", ""]);
+    let dangling = form(deal, &["Б", "77", "", "Новая", ""]);
+
+    assert!(matches!(
+        db.insert_all(deal, &[good.clone(), dangling]).unwrap_err(),
+        DbError::NoSuchLink
+    ));
+    assert_eq!(
+        db.records(deal).unwrap().len(),
+        1,
+        "первая запись пакета откатилась вместе со второй"
+    );
+
+    db.insert_all(deal, &[good.clone(), good]).unwrap();
+    assert_eq!(db.records(deal).unwrap().len(), 3);
+}
